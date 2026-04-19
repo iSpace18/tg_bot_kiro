@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     def parse_admin_ids(cls, v):
         if isinstance(v, str):
             return [int(i.strip()) for i in v.replace("[", "").replace("]", "").split(",") if i.strip()]
+        if isinstance(v, int):
+            return [v]
         return v
 
     class Config:
