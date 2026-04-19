@@ -118,7 +118,7 @@ class VPNService:
         server_ip = self._get_server_ip()
         
         # Beautiful name for VPN apps with flag and description
-        display_name = "⚡ Молния | 🇳🇱 Нидерланды [VPN]"
+        display_name = "⚡ | 🇳🇱 Нидерланды [VPN]"
         
         sub_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
