@@ -83,13 +83,14 @@ class VPNService:
         conn = _db_connect()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT settings, port FROM inbounds WHERE id = ?", (inbound_id,))
+            cursor.execute("SELECT settings, port, stream_settings FROM inbounds WHERE id = ?", (inbound_id,))
             row = cursor.fetchone()
             if not row:
                 raise Exception(f"Inbound {inbound_id} not found")
 
             settings_json = json.loads(row[0])
             port = row[1]
+            stream_settings = json.loads(row[2]) if row[2] else {}
 
             new_client = {
                 "id": client_uuid,
@@ -116,14 +117,36 @@ class VPNService:
         _restart_xray()
 
         server_ip = self._get_server_ip()
-        
-        # Beautiful name for VPN apps with flag and description
         display_name = "⚡ | 🇳🇱 Нидерланды [VPN]"
         
-        sub_url = (
-            f"vless://{client_uuid}@{server_ip}:{port}"
-            f"?type=tcp&security=none&encryption=none#{display_name}"
-        )
+        # Check if Reality is enabled
+        security = stream_settings.get("security", "none")
+        
+        if security == "reality":
+            # Generate Reality VLESS URL
+            reality_settings = stream_settings.get("realitySettings", {})
+            server_names = reality_settings.get("serverNames", [])
+            short_ids = reality_settings.get("shortIds", [])
+            public_key = reality_settings.get("settings", {}).get("publicKey", "")
+            fingerprint = reality_settings.get("settings", {}).get("fingerprint", "chrome")
+            spider_x = reality_settings.get("settings", {}).get("spiderX", "/")
+            
+            # Use first available values
+            sni = server_names[0] if server_names else "www.amd.com"
+            sid = short_ids[0] if short_ids else ""
+            
+            sub_url = (
+                f"vless://{client_uuid}@{server_ip}:{port}"
+                f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
+                f"&sni={sni}&sid={sid}&spx={spider_x}#{display_name}"
+            )
+        else:
+            # Standard VLESS TCP
+            sub_url = (
+                f"vless://{client_uuid}@{server_ip}:{port}"
+                f"?type=tcp&security=none&encryption=none#{display_name}"
+            )
+        
         return {
             "uuid": client_uuid,
             "subscription_url": sub_url,
