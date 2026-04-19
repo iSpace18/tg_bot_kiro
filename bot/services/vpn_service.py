@@ -116,9 +116,13 @@ class VPNService:
         _restart_xray()
 
         server_ip = self._get_server_ip()
+        
+        # Beautiful name for VPN apps with flag and description
+        display_name = "⚡ Молния | 🇳🇱 Нидерланды [VPN]"
+        
         sub_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
-            f"?type=tcp&security=none&encryption=none#{username}"
+            f"?type=tcp&security=none&encryption=none#{display_name}"
         )
         return {
             "uuid": client_uuid,
