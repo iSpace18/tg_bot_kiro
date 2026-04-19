@@ -11,3 +11,5 @@ services:
       - ./data:/app/data
       - /etc/x-ui:/etc/x-ui:rw
     network_mode: host
+    pid: host
+    privileged: true
