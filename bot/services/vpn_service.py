@@ -141,11 +141,15 @@ class VPNService:
         server_ip = self._get_server_ip()
         
         # Beautiful name for VPN apps with flag and description
-        display_name = "⚡ | 🇳🇱 Нидерланды [VPN]"
+        display_name = "⚡ | 🇳🇱 Нидерланды [VPN] Optimized"
         
+        # Optimized URL for mobile networks with proper parameters
+        from urllib.parse import quote
         sub_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
-            f"?type=tcp&security=none&encryption=none#{display_name}"
+            f"?type=tcp&security=none&encryption=none"
+            f"&headerType=none"
+            f"#{quote(display_name)}"
         )
         return {
             "uuid": client_uuid,
