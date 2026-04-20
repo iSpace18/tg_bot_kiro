@@ -142,7 +142,7 @@ class VPNService:
         server_ip = self._get_server_ip()
         
         # Beautiful name for VPN apps with flag and description
-        display_name = "⚡ | 🇳🇱 Reality [VPN] Optimized"
+        display_name = "⚡ VLESS-Reality | Netherlands 🇳🇱"
         
         # Reality-optimized URL with proper parameters
         from urllib.parse import quote
