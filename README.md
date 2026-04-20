@@ -1,87 +1,102 @@
 # VPN Telegram Bot
 
-Telegram-бот для автоматической продажи VPN-доступа через 3x-ui.
+Telegram бот для автоматической продажи VPN доступа с интеграцией 3x-ui панели.
 
-## Быстрый старт
+## Возможности
 
-### 1. Установка зависимостей на VPS
+- 🎁 Пробный период для новых пользователей
+- 💳 Оплата через Telegram Stars и ЮKassa
+- 🔑 Автоматическое создание VPN ключей через прямой доступ к БД 3x-ui
+- 👥 Реферальная система с бонусами
+- 📊 Профиль пользователя с историей покупок
+- 🛠 Админ панель для управления
+- ❓ FAQ раздел
 
-```bash
-apt update && apt upgrade -y
-apt install curl ufw git sqlite3 -y
-```
+## Требования
 
-### 2. Установка Docker
+- Ubuntu/Debian сервер
+- Python 3.8+
+- Установленная 3x-ui панель
+- Telegram Bot Token от @BotFather
 
-```bash
-curl -fsSL https://get.docker.com | sh
-```
+## Быстрая установка на сервере
 
-### 3. Установка 3x-ui
-
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-```
-
-После установки зайдите в веб-интерфейс `https://IP:2053` и создайте inbound:
-- Protocol: **vless**
-- Port: **443** (или 8443)
-- Network: **tcp**
-- Security: **none**
-
-### 4. Настройка бота
+### 1. Клонируйте репозиторий
 
 ```bash
-git clone <repo> ~/vpn_telegram
-cd ~/vpn_telegram
-cp .env.example .env
-nano .env  # заполните реальными данными
+cd /opt
+git clone https://github.com/YOUR_USERNAME/vpn-telegram-bot.git vpn_bot
+cd vpn_bot
 ```
 
-### 5. Запуск
+### 2. Создайте .env файл
 
 ```bash
-docker compose build --no-cache
-docker compose up -d
-docker compose logs -f
+nano .env
 ```
 
-## Переменные окружения
+Заполните необходимые данные:
 
-| Переменная | Описание |
-|---|---|
-| `BOT_TOKEN` | Токен бота от @BotFather |
-| `ADMIN_IDS` | Telegram ID администраторов через запятую |
-| `VPN_PANEL_URL` | URL панели 3x-ui (https://IP:PORT) |
-| `VPN_PANEL_USERNAME` | Логин панели |
-| `VPN_PANEL_PASSWORD` | Пароль панели |
-| `YOOKASSA_SHOP_ID` | ID магазина ЮKassa (опционально) |
-| `YOOKASSA_SECRET_KEY` | Секретный ключ ЮKassa (опционально) |
+```env
+BOT_TOKEN=your_bot_token_here
+ADMIN_IDS=your_telegram_id
+DATABASE_URL=sqlite+aiosqlite:///data/bot.db
 
-## Структура проекта
+VPN_PANEL_URL=https://your-server-ip:2053
+VPN_PANEL_USERNAME=admin
+VPN_PANEL_PASSWORD=admin
 
-```
-vpn_telegram/
-├── bot/
-│   ├── main.py           # точка входа
-│   ├── config.py         # настройки
-│   ├── models.py         # модели БД
-│   ├── handlers/         # обработчики команд
-│   ├── keyboards/        # клавиатуры
-│   ├── services/         # бизнес-логика
-│   │   └── vpn_service.py  # прямая работа с БД 3x-ui
-│   ├── middlewares/      # middleware
-│   └── utils/            # утилиты
-├── data/                 # SQLite база бота
-├── Dockerfile
-├── docker-compose.yml
-└── .env
+# Для продакшена ОБЯЗАТЕЛЬНО False
+VPN_MOCK_MODE=False
+
+TRIAL_DAYS=3
+REFERRAL_BONUS_PERCENT=15
+
+YOOKASSA_SHOP_ID=your_shop_id
+YOOKASSA_SECRET_KEY=your_secret_key
 ```
 
-## Команды бота
+### 3. Запустите установку
 
-- `/start` — главное меню
-- `/admin` — панель администратора (только для ADMIN_IDS)
+```bash
+chmod +x install_on_server.sh
+./install_on_server.sh
+```
+
+Скрипт автоматически:
+- Установит все зависимости
+- Создаст виртуальное окружение
+- Установит Python пакеты
+- Создаст systemd сервис для автозапуска
+- Запустит бота
+
+### 4. Проверьте статус
+
+```bash
+systemctl status vpn-bot.service
+journalctl -u vpn-bot.service -f
+```
+
+## Управление ботом
+
+```bash
+# Перезапуск
+systemctl restart vpn-bot.service
+
+# Остановка
+systemctl stop vpn-bot.service
+
+# Запуск
+systemctl start vpn-bot.service
+
+# Просмотр логов в реальном времени
+journalctl -u vpn-bot.service -f
+
+# Обновление с GitHub
+cd /opt/vpn_bot
+git pull
+systemctl restart vpn-bot.service
+```
 
 ## Тарифы по умолчанию
 
@@ -94,3 +109,104 @@ vpn_telegram/
 | 1 год | 365 | 1800 | 2500 |
 
 Тарифы можно изменить через админ-панель `/admin` → Тарифы.
+
+## Структура проекта
+
+```
+vpn_bot/
+├── bot/
+│   ├── handlers/       # Обработчики команд
+│   ├── keyboards/      # Клавиатуры
+│   ├── middlewares/    # Middleware
+│   ├── services/       # Бизнес-логика (VPN, платежи, рефералы)
+│   ├── utils/          # Утилиты (БД, логирование)
+│   ├── config.py       # Конфигурация
+│   ├── models.py       # Модели БД
+│   └── main.py         # Точка входа
+├── data/               # База данных SQLite
+├── requirements.txt    # Python зависимости
+├── install_on_server.sh # Скрипт установки
+└── .env               # Конфигурация (не в git)
+```
+
+## Разработка и тестирование
+
+### Локальное тестирование (Windows/Mac)
+
+Для тестирования без реального VPN сервера установите в `.env`:
+
+```env
+VPN_MOCK_MODE=True
+```
+
+Это создаст тестовые VPN ключи без подключения к 3x-ui.
+
+### Установка зависимостей
+
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# или
+venv\Scripts\activate  # Windows
+
+pip install -r requirements.txt
+```
+
+### Запуск локально
+
+```bash
+export PYTHONPATH=.  # Linux/Mac
+# или
+$env:PYTHONPATH="."  # Windows PowerShell
+
+python bot/main.py
+```
+
+## Настройка 3x-ui
+
+Убедитесь, что в 3x-ui создан inbound с протоколом VLESS:
+
+1. Зайдите в панель 3x-ui: `https://your-server-ip:2053`
+2. Создайте inbound:
+   - Protocol: **vless**
+   - Port: **443** (или другой)
+   - Network: **tcp**
+   - Security: **none** или **reality**
+
+Бот автоматически найдет первый VLESS inbound и будет добавлять туда клиентов.
+
+## Команды бота
+
+- `/start` — главное меню
+- `/admin` — панель администратора (только для ADMIN_IDS)
+
+## Устранение неполадок
+
+### Бот не создает VPN ключи
+
+Проверьте доступ к базе данных 3x-ui:
+
+```bash
+ls -la /etc/x-ui/x-ui.db
+chmod 644 /etc/x-ui/x-ui.db
+```
+
+### Просмотр подробных логов
+
+```bash
+journalctl -u vpn-bot.service -n 100 --no-pager
+```
+
+### Проверка inbound в 3x-ui
+
+```bash
+sqlite3 /etc/x-ui/x-ui.db "SELECT id, protocol, port FROM inbounds;"
+```
+
+## Лицензия
+
+MIT
+
+## Поддержка
+
+Если возникли вопросы, создайте Issue в репозитории.
