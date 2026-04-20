@@ -2,7 +2,7 @@ import logging
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from bot.models import User
@@ -13,21 +13,21 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-async def get_or_create_user(telegram_id: int, username: str, full_name: str, session: AsyncSession) -> User:
-    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+def get_or_create_user(telegram_id: int, username: str, full_name: str, session: Session) -> User:
+    result = session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
     if not user:
         user = User(telegram_id=telegram_id, username=username, full_name=full_name)
         session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        session.commit()
+        session.refresh(user)
     return user
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession):
+async def cmd_start(message: Message, session: Session):
     args = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else None
-    user = await get_or_create_user(
+    user = get_or_create_user(
         message.from_user.id,
         message.from_user.username or "",
         message.from_user.full_name or "",
@@ -37,9 +37,9 @@ async def cmd_start(message: Message, session: AsyncSession):
     # Handle referral
     if args and args.startswith("ref") and not user.referred_by:
         ref_code = args[3:]
-        await process_referral(user, ref_code, session)
+        process_referral(user, ref_code, session)
 
-    ref_code = await get_or_create_referral_code(user, session)
+    ref_code = get_or_create_referral_code(user, session)
 
     await message.answer(
         f"👋 Привет, <b>{message.from_user.first_name}</b>!\n\n"
@@ -56,3 +56,4 @@ async def back_to_main(callback: CallbackQuery):
         "Главное меню. Выбери раздел:",
     )
     await callback.answer()
+

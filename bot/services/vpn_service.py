@@ -15,7 +15,6 @@ XUI_DB_PATH = "/etc/x-ui/x-ui.db"
 
 
 def _db_connect() -> sqlite3.Connection:
-    """Open x-ui DB with timeout and WAL mode to avoid locking."""
     conn = sqlite3.connect(XUI_DB_PATH, timeout=30, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA busy_timeout=30000;")
@@ -23,7 +22,6 @@ def _db_connect() -> sqlite3.Connection:
 
 
 def _restart_xray():
-    """Send SIGHUP to xray process by scanning /proc."""
     try:
         xray_pids = []
         for pid_str in os.listdir('/proc'):
@@ -41,8 +39,6 @@ def _restart_xray():
             for pid in xray_pids:
                 os.kill(pid, signal.SIGHUP)
             logger.info(f"Sent SIGHUP to xray PIDs: {xray_pids}")
-        else:
-            logger.warning("xray process not found in /proc")
     except Exception as e:
         logger.error(f"Failed to restart xray: {e}")
 
@@ -51,7 +47,7 @@ class VPNService:
     def __init__(self):
         self.base_url = settings.VPN_PANEL_URL.rstrip("/")
         self._inbound_id: Optional[int] = None
-        logger.info("VPNService initialized (direct DB mode)")
+        logger.info("VPNService initialized (ultra-optimized)")
 
     def _get_inbound_id(self) -> int:
         if self._inbound_id is not None:
@@ -62,7 +58,7 @@ class VPNService:
             cursor.execute("SELECT id FROM inbounds WHERE protocol='vless' LIMIT 1")
             row = cursor.fetchone()
             if not row:
-                raise Exception("VLESS inbound not found in 3x-ui database")
+                raise Exception("VLESS inbound not found")
             self._inbound_id = row[0]
             logger.info(f"Found VLESS inbound ID: {self._inbound_id}")
             return self._inbound_id
@@ -83,14 +79,13 @@ class VPNService:
         conn = _db_connect()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT settings, port, stream_settings FROM inbounds WHERE id = ?", (inbound_id,))
+            cursor.execute("SELECT settings, port FROM inbounds WHERE id = ?", (inbound_id,))
             row = cursor.fetchone()
             if not row:
                 raise Exception(f"Inbound {inbound_id} not found")
 
             settings_json = json.loads(row[0])
             port = row[1]
-            stream_settings = json.loads(row[2]) if row[2] else {}
 
             new_client = {
                 "id": client_uuid,
@@ -110,56 +105,31 @@ class VPNService:
                 (json.dumps(settings_json), inbound_id),
             )
             conn.commit()
-            logger.info(f"Client {username} added to inbound {inbound_id}, port={port}")
+            logger.info(f"Client {username} added, port={port}")
         finally:
             conn.close()
 
         _restart_xray()
 
         server_ip = self._get_server_ip()
+        from urllib.parse import quote
+
         display_name = "⚡ | 🇳🇱 Нидерланды [VPN]"
-        
-        # Check if Reality is enabled
-        security = stream_settings.get("security", "none")
-        
-        if security == "reality":
-            # Generate Reality VLESS URL
-            reality_settings = stream_settings.get("realitySettings", {})
-            server_names = reality_settings.get("serverNames", [])
-            short_ids = reality_settings.get("shortIds", [])
-            public_key = reality_settings.get("settings", {}).get("publicKey", "")
-            fingerprint = reality_settings.get("settings", {}).get("fingerprint", "chrome")
-            spider_x = reality_settings.get("settings", {}).get("spiderX", "/")
-            
-            # Use first available values
-            sni = server_names[0] if server_names else "www.amd.com"
-            sid = short_ids[0] if short_ids else ""
-            
-            sub_url = (
-                f"vless://{client_uuid}@{server_ip}:{port}"
-                f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
-                f"&sni={sni}&sid={sid}&spx={spider_x}#{display_name}"
-            )
-        else:
-            # Standard VLESS TCP
-            sub_url = (
-                f"vless://{client_uuid}@{server_ip}:{port}"
-                f"?type=tcp&security=none&encryption=none#{display_name}"
-            )
-        
+
+        url = (
+            f"vless://{client_uuid}@{server_ip}:{port}"
+            f"?type=tcp&security=none&encryption=none#{quote(display_name)}"
+        )
+
         return {
             "uuid": client_uuid,
-            "subscription_url": sub_url,
+            "subscription_url": url,
             "expiry_date": datetime.fromtimestamp(expiry_ts / 1000),
         }
 
-    async def create_user(
-        self, username: str, expiry_days: int, traffic_limit_gb: Optional[int] = None
-    ) -> Dict[str, Any]:
+    async def create_user(self, username: str, expiry_days: int, traffic_limit_gb: Optional[int] = None) -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._create_user_sync, username, expiry_days, traffic_limit_gb
-        )
+        result = await loop.run_in_executor(None, self._create_user_sync, username, expiry_days, traffic_limit_gb)
         await asyncio.sleep(3)
         return result
 
@@ -176,15 +146,10 @@ class VPNService:
             clients = settings_json.get("clients", [])
             new_clients = [c for c in clients if c.get("email") != username]
             if len(new_clients) == len(clients):
-                logger.warning(f"Client {username} not found in inbound")
                 return False
             settings_json["clients"] = new_clients
-            cursor.execute(
-                "UPDATE inbounds SET settings = ? WHERE id = ?",
-                (json.dumps(settings_json), inbound_id),
-            )
+            cursor.execute("UPDATE inbounds SET settings = ? WHERE id = ?", (json.dumps(settings_json), inbound_id))
             conn.commit()
-            logger.info(f"Client {username} deleted")
         finally:
             conn.close()
         _restart_xray()

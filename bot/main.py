@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
-from bot.utils.db import init_db
+from bot.utils.db import init_db, get_session
 from bot.utils.logger import setup_logger
 from bot.middlewares.database import DatabaseMiddleware
 from bot.handlers import start, payment, profile, referral, support, admin, faq
@@ -13,11 +13,11 @@ setup_logger()
 logger = logging.getLogger(__name__)
 
 
-async def seed_default_plans(session):
+def seed_default_plans(session):
     """Insert default plans if none exist."""
     from sqlalchemy import select
     from bot.models import Plan
-    result = await session.execute(select(Plan))
+    result = session.execute(select(Plan))
     if result.scalars().first():
         return
 
@@ -30,17 +30,19 @@ async def seed_default_plans(session):
     ]
     for plan in default_plans:
         session.add(plan)
-    await session.commit()
+    session.commit()
     logger.info("Default plans seeded.")
 
 
 async def main():
-    await init_db()
+    init_db()
 
     # Seed default plans
-    from bot.utils.db import AsyncSessionLocal
-    async with AsyncSessionLocal() as session:
-        await seed_default_plans(session)
+    session = get_session()
+    try:
+        seed_default_plans(session)
+    finally:
+        session.close()
 
     bot = Bot(token=settings.BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())

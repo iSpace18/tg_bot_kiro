@@ -45,3 +45,9 @@ def yookassa_pay_keyboard(url: str, payment_id: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_payment:{payment_id}")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="buy_vpn")],
     ])
+
+
+def back_to_main_inline() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Главное меню", callback_data="back_main")]
+    ])

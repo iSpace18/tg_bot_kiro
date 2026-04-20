@@ -1,7 +1,7 @@
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
-from bot.utils.db import AsyncSessionLocal
+from bot.utils.db import get_session
 
 
 class DatabaseMiddleware(BaseMiddleware):
@@ -11,6 +11,9 @@ class DatabaseMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        async with AsyncSessionLocal() as session:
+        session = get_session()
+        try:
             data["session"] = session
             return await handler(event, data)
+        finally:
+            session.close()
