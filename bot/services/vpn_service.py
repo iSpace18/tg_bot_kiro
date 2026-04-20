@@ -117,6 +117,7 @@ class VPNService:
             new_client = {
                 "id": client_uuid,
                 "email": username,
+                "flow": "xtls-rprx-vision",
                 "enable": True,
                 "expiryTime": expiry_ts,
                 "totalGB": total_gb,
@@ -141,14 +142,15 @@ class VPNService:
         server_ip = self._get_server_ip()
         
         # Beautiful name for VPN apps with flag and description
-        display_name = "⚡ | 🇳🇱 Нидерланды [VPN] Optimized"
+        display_name = "⚡ | 🇳🇱 Reality [VPN] Optimized"
         
-        # Optimized URL for mobile networks with proper parameters
+        # Reality-optimized URL with proper parameters
         from urllib.parse import quote
         sub_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
-            f"?type=tcp&security=none&encryption=none"
-            f"&headerType=none"
+            f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
+            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+            f"&flow=xtls-rprx-vision"
             f"#{quote(display_name)}"
         )
         return {
