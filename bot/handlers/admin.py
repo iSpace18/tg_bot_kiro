@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from bot.models import User, Plan, VPNKey, Payment
@@ -55,15 +55,15 @@ async def admin_back(callback: CallbackQuery):
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: CallbackQuery, session: Session):
+async def admin_stats(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
-    users_count = session.execute(select(func.count(User.id))).scalar()
-    keys_count = session.execute(select(func.count(VPNKey.id)).where(VPNKey.is_active == True)).scalar()
-    paid_count = session.execute(select(func.count(Payment.id)).where(Payment.status == "paid")).scalar()
-    trial_count = session.execute(select(func.count(User.id)).where(User.trial_used == True)).scalar()
+    users_count = (await session.execute(select(func.count(User.id)))).scalar()
+    keys_count = (await session.execute(select(func.count(VPNKey.id)).where(VPNKey.is_active == True))).scalar()
+    paid_count = (await session.execute(select(func.count(Payment.id)).where(Payment.status == "paid"))).scalar()
+    trial_count = (await session.execute(select(func.count(User.id)).where(User.trial_used == True))).scalar()
 
     await callback.message.edit_text(
         f"📊 <b>Статистика</b>\n\n"
@@ -80,12 +80,12 @@ async def admin_stats(callback: CallbackQuery, session: Session):
 # ── Plans ─────────────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data == "admin_plans")
-async def admin_plans(callback: CallbackQuery, session: Session):
+async def admin_plans(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
-    result = session.execute(select(Plan))
+    result = await session.execute(select(Plan))
     plans = result.scalars().all()
     await callback.message.edit_text(
         "📋 <b>Управление тарифами</b>",
@@ -96,20 +96,20 @@ async def admin_plans(callback: CallbackQuery, session: Session):
 
 
 @router.callback_query(F.data.startswith("admin_plan_toggle:"))
-async def admin_plan_toggle(callback: CallbackQuery, session: Session):
+async def admin_plan_toggle(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
     plan_id = int(callback.data.split(":")[1])
-    result = session.execute(select(Plan).where(Plan.id == plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if plan:
         plan.is_active = not plan.is_active
-        session.commit()
+        await session.commit()
         await callback.answer(f"Тариф {'активирован' if plan.is_active else 'деактивирован'}")
 
-    result = session.execute(select(Plan))
+    result = await session.execute(select(Plan))
     plans = result.scalars().all()
     await callback.message.edit_text(
         "📋 <b>Управление тарифами</b>",
@@ -180,7 +180,7 @@ async def admin_plan_rub(message: Message, state: FSMContext):
 
 
 @router.message(AdminStates.plan_traffic)
-async def admin_plan_traffic(message: Message, state: FSMContext, session: Session):
+async def admin_plan_traffic(message: Message, state: FSMContext, session: AsyncSession):
     if not is_admin(message.from_user.id):
         return
     try:
@@ -199,7 +199,7 @@ async def admin_plan_traffic(message: Message, state: FSMContext, session: Sessi
         is_active=True,
     )
     session.add(plan)
-    session.commit()
+    await session.commit()
     await state.clear()
     await message.answer(
         f"✅ Тариф <b>{plan.name}</b> добавлен!\n"
@@ -211,12 +211,12 @@ async def admin_plan_traffic(message: Message, state: FSMContext, session: Sessi
 # ── Keys management ───────────────────────────────────────────────────────────
 
 @router.callback_query(F.data == "admin_keys")
-async def admin_keys(callback: CallbackQuery, session: Session):
+async def admin_keys(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
-    result = session.execute(select(VPNKey).order_by(VPNKey.created_at.desc()))
+    result = await session.execute(select(VPNKey).order_by(VPNKey.created_at.desc()))
     keys = result.scalars().all()
     await callback.message.edit_text(
         f"🔑 <b>Управление ключами</b> (всего: {len(keys)})",
@@ -227,13 +227,13 @@ async def admin_keys(callback: CallbackQuery, session: Session):
 
 
 @router.callback_query(F.data.startswith("admin_key_action:"))
-async def admin_key_action(callback: CallbackQuery, session: Session):
+async def admin_key_action(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
     key_id = int(callback.data.split(":")[1])
-    result = session.execute(select(VPNKey).where(VPNKey.id == key_id))
+    result = await session.execute(select(VPNKey).where(VPNKey.id == key_id))
     key = result.scalar_one_or_none()
     if not key:
         await callback.answer("Ключ не найден", show_alert=True)
@@ -250,34 +250,34 @@ async def admin_key_action(callback: CallbackQuery, session: Session):
 
 
 @router.callback_query(F.data.startswith("admin_key_deactivate:"))
-async def admin_key_deactivate(callback: CallbackQuery, session: Session):
+async def admin_key_deactivate(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
     key_id = int(callback.data.split(":")[1])
-    result = session.execute(select(VPNKey).where(VPNKey.id == key_id))
+    result = await session.execute(select(VPNKey).where(VPNKey.id == key_id))
     key = result.scalar_one_or_none()
     if key:
         key.is_active = False
-        session.commit()
+        await session.commit()
         await callback.answer("Ключ деактивирован")
     await callback.message.edit_text("🔧 <b>Панель администратора</b>", reply_markup=admin_keyboard(), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("admin_key_delete:"))
-async def admin_key_delete(callback: CallbackQuery, session: Session):
+async def admin_key_delete(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
     key_id = int(callback.data.split(":")[1])
-    result = session.execute(select(VPNKey).where(VPNKey.id == key_id))
+    result = await session.execute(select(VPNKey).where(VPNKey.id == key_id))
     key = result.scalar_one_or_none()
     if key:
         await vpn_service.delete_user(key.key_uuid)
-        session.delete(key)
-        session.commit()
+        await session.delete(key)
+        await session.commit()
         await callback.answer("Ключ удалён")
     await callback.message.edit_text("🔧 <b>Панель администратора</b>", reply_markup=admin_keyboard(), parse_mode="HTML")
 
@@ -295,14 +295,14 @@ async def admin_broadcast_start(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(AdminStates.broadcast_text)
-async def admin_broadcast_send(message: Message, state: FSMContext, session: Session):
+async def admin_broadcast_send(message: Message, state: FSMContext, session: AsyncSession):
     if not is_admin(message.from_user.id):
         return
 
     text = message.text
     await state.clear()
 
-    result = session.execute(select(User).where(User.is_banned == False))
+    result = await session.execute(select(User).where(User.is_banned == False))
     users = result.scalars().all()
 
     sent = 0
@@ -320,12 +320,12 @@ async def admin_broadcast_send(message: Message, state: FSMContext, session: Ses
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data == "admin_users")
-async def admin_users(callback: CallbackQuery, session: Session):
+async def admin_users(callback: CallbackQuery, session: AsyncSession):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён.", show_alert=True)
         return
 
-    result = session.execute(select(User).order_by(User.created_at.desc()).limit(20))
+    result = await session.execute(select(User).order_by(User.created_at.desc()).limit(20))
     users = result.scalars().all()
 
     lines = [f"👥 <b>Последние пользователи ({len(users)}):</b>\n"]
@@ -338,4 +338,3 @@ async def admin_users(callback: CallbackQuery, session: Session):
         parse_mode="HTML",
     )
     await callback.answer()
-

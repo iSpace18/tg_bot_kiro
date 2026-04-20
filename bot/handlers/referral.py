@@ -1,7 +1,7 @@
 import logging
 from aiogram import Router, F
 from aiogram.types import Message
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from bot.models import User, ReferralBonus
@@ -12,17 +12,17 @@ router = Router()
 
 
 @router.message(F.text == "👥 Реферальная программа")
-async def referral_program(message: Message, session: Session):
-    result = session.execute(select(User).where(User.telegram_id == message.from_user.id))
+async def referral_program(message: Message, session: AsyncSession):
+    result = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
     user = result.scalar_one_or_none()
     if not user:
         await message.answer("Сначала отправьте /start")
         return
 
-    ref_code = get_or_create_referral_code(user, session)
+    ref_code = await get_or_create_referral_code(user, session)
 
     # Count referrals
-    bonuses_result = session.execute(
+    bonuses_result = await session.execute(
         select(func.count(ReferralBonus.id)).where(ReferralBonus.user_id == user.id)
     )
     referral_count = bonuses_result.scalar() or 0
@@ -39,4 +39,3 @@ async def referral_program(message: Message, session: Session):
         f"вы получаете бонусные дни к следующей подписке.",
         parse_mode="HTML",
     )
-

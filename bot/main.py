@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
-from bot.utils.db import init_db, get_session
+from bot.utils.db import init_db
 from bot.utils.logger import setup_logger
 from bot.middlewares.database import DatabaseMiddleware
 from bot.handlers import start, payment, profile, referral, support, admin, faq
@@ -13,11 +13,11 @@ setup_logger()
 logger = logging.getLogger(__name__)
 
 
-def seed_default_plans(session):
+async def seed_default_plans(session):
     """Insert default plans if none exist."""
     from sqlalchemy import select
     from bot.models import Plan
-    result = session.execute(select(Plan))
+    result = await session.execute(select(Plan))
     if result.scalars().first():
         return
 
@@ -30,21 +30,28 @@ def seed_default_plans(session):
     ]
     for plan in default_plans:
         session.add(plan)
-    session.commit()
+    await session.commit()
     logger.info("Default plans seeded.")
 
 
 async def main():
-    init_db()
+    await init_db()
 
     # Seed default plans
-    session = get_session()
-    try:
-        seed_default_plans(session)
-    finally:
-        session.close()
+    from bot.utils.db import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        await seed_default_plans(session)
 
-    bot = Bot(token=settings.BOT_TOKEN)
+    # Configure bot with proxy if provided
+    from aiogram.client.session.aiohttp import AiohttpSession
+    
+    if settings.PROXY_URL:
+        logger.info(f"Using proxy: {settings.PROXY_URL}")
+        session = AiohttpSession(proxy=settings.PROXY_URL)
+        bot = Bot(token=settings.BOT_TOKEN, session=session)
+    else:
+        bot = Bot(token=settings.BOT_TOKEN)
+    
     dp = Dispatcher(storage=MemoryStorage())
 
     # Register middleware

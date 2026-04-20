@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from bot.models import User, Plan, Payment, VPNKey, TrialUsage
@@ -15,21 +15,21 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def get_user(telegram_id: int, session: Session) -> User:
-    result = session.execute(select(User).where(User.telegram_id == telegram_id))
+async def get_user(telegram_id: int, session: AsyncSession) -> User:
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     return result.scalar_one_or_none()
 
 
-def get_active_plans(session: Session) -> list:
-    result = session.execute(select(Plan).where(Plan.is_active == True))
+async def get_active_plans(session: AsyncSession) -> list:
+    result = await session.execute(select(Plan).where(Plan.is_active == True))
     return result.scalars().all()
 
 
 # ── Buy VPN ──────────────────────────────────────────────────────────────────
 
 @router.message(F.text == "💳 Купить VPN")
-async def buy_vpn(message: Message, session: Session):
-    plans = get_active_plans(session)
+async def buy_vpn(message: Message, session: AsyncSession):
+    plans = await get_active_plans(session)
     if not plans:
         await message.answer("😔 Тарифы временно недоступны. Попробуйте позже.")
         return
@@ -42,8 +42,8 @@ async def buy_vpn(message: Message, session: Session):
 
 
 @router.callback_query(F.data == "buy_vpn")
-async def buy_vpn_callback(callback: CallbackQuery, session: Session):
-    plans = get_active_plans(session)
+async def buy_vpn_callback(callback: CallbackQuery, session: AsyncSession):
+    plans = await get_active_plans(session)
     if not plans:
         await callback.answer("Тарифы временно недоступны", show_alert=True)
         return
@@ -56,9 +56,9 @@ async def buy_vpn_callback(callback: CallbackQuery, session: Session):
 
 
 @router.callback_query(F.data.startswith("plan:"))
-async def select_plan(callback: CallbackQuery, session: Session):
+async def select_plan(callback: CallbackQuery, session: AsyncSession):
     plan_id = int(callback.data.split(":")[1])
-    result = session.execute(select(Plan).where(Plan.id == plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         await callback.answer("Тариф не найден", show_alert=True)
@@ -78,9 +78,9 @@ async def select_plan(callback: CallbackQuery, session: Session):
 # ── Telegram Stars ────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("pay_stars:"))
-async def pay_stars(callback: CallbackQuery, session: Session):
+async def pay_stars(callback: CallbackQuery, session: AsyncSession):
     plan_id = int(callback.data.split(":")[1])
-    result = session.execute(select(Plan).where(Plan.id == plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         await callback.answer("Тариф не найден", show_alert=True)
@@ -103,19 +103,19 @@ async def pre_checkout(pre_checkout_query: PreCheckoutQuery):
 
 
 @router.message(F.successful_payment)
-async def successful_payment(message: Message, session: Session):
+async def successful_payment(message: Message, session: AsyncSession):
     payload = message.successful_payment.invoice_payload
     if not payload.startswith("vpn_plan_"):
         return
 
     plan_id = int(payload.split("_")[-1])
-    result = session.execute(select(Plan).where(Plan.id == plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         await message.answer("Ошибка: тариф не найден.")
         return
 
-    user = get_user(message.from_user.id, session)
+    user = await get_user(message.from_user.id, session)
     username = f"tg{message.from_user.id}"
 
     try:
@@ -143,18 +143,13 @@ async def successful_payment(message: Message, session: Session):
         expiry_date=vpn_data["expiry_date"],
     )
     session.add(vpn_key)
-    session.commit()
+    await session.commit()
 
     await message.answer(
         f"✅ <b>Оплата прошла успешно!</b>\n\n"
         f"🔑 Ваш VPN-ключ:\n<code>{vpn_data['subscription_url']}</code>\n\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "📲 <b>Как подключиться:</b>\n"
-        "1. Скачайте <b>Hiddify</b> (Android/iOS/Windows)\n"
-        "   или <b>v2rayNG</b> (Android) / <b>Streisand</b> (iOS)\n"
-        "2. Нажмите <b>+</b> → <b>Вставить из буфера</b>\n"
-        "3. Скопируйте ссылку выше и вставьте\n"
-        "4. Нажмите <b>Подключить</b> ✅",
+        "Импортируйте ключ в приложение v2rayNG (Android) или Streisand (iOS).",
         parse_mode="HTML",
     )
 
@@ -162,13 +157,13 @@ async def successful_payment(message: Message, session: Session):
 # ── YooKassa ──────────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("pay_yookassa:"))
-async def pay_yookassa(callback: CallbackQuery, session: Session):
+async def pay_yookassa(callback: CallbackQuery, session: AsyncSession):
     if not settings.YOOKASSA_SHOP_ID or not settings.YOOKASSA_SECRET_KEY:
         await callback.answer("ЮKassa не настроена", show_alert=True)
         return
 
     plan_id = int(callback.data.split(":")[1])
-    result = session.execute(select(Plan).where(Plan.id == plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         await callback.answer("Тариф не найден", show_alert=True)
@@ -184,7 +179,7 @@ async def pay_yookassa(callback: CallbackQuery, session: Session):
         return
 
     # Save pending payment
-    user = get_user(callback.from_user.id, session)
+    user = await get_user(callback.from_user.id, session)
     payment = Payment(
         user_id=user.id,
         plan_id=plan.id,
@@ -195,7 +190,7 @@ async def pay_yookassa(callback: CallbackQuery, session: Session):
         status="pending",
     )
     session.add(payment)
-    session.commit()
+    await session.commit()
 
     await callback.message.edit_text(
         f"💳 <b>Оплата через ЮKassa</b>\n\n"
@@ -211,7 +206,7 @@ async def pay_yookassa(callback: CallbackQuery, session: Session):
 
 
 @router.callback_query(F.data.startswith("check_payment:"))
-async def check_payment(callback: CallbackQuery, session: Session):
+async def check_payment(callback: CallbackQuery, session: AsyncSession):
     payment_id = callback.data.split(":")[1]
     status = check_yookassa_payment(payment_id)
 
@@ -219,7 +214,7 @@ async def check_payment(callback: CallbackQuery, session: Session):
         await callback.answer(f"Статус платежа: {status or 'неизвестен'}. Попробуйте позже.", show_alert=True)
         return
 
-    result = session.execute(
+    result = await session.execute(
         select(Payment).where(Payment.external_payment_id == payment_id)
     )
     payment = result.scalar_one_or_none()
@@ -227,9 +222,9 @@ async def check_payment(callback: CallbackQuery, session: Session):
         await callback.answer("Платёж уже обработан или не найден.", show_alert=True)
         return
 
-    result = session.execute(select(Plan).where(Plan.id == payment.plan_id))
+    result = await session.execute(select(Plan).where(Plan.id == payment.plan_id))
     plan = result.scalar_one_or_none()
-    result = session.execute(select(User).where(User.id == payment.user_id))
+    result = await session.execute(select(User).where(User.id == payment.user_id))
     user = result.scalar_one_or_none()
 
     username = f"tg{user.telegram_id}"
@@ -248,18 +243,13 @@ async def check_payment(callback: CallbackQuery, session: Session):
         expiry_date=vpn_data["expiry_date"],
     )
     session.add(vpn_key)
-    session.commit()
+    await session.commit()
 
     await callback.message.edit_text(
         f"✅ <b>Оплата подтверждена!</b>\n\n"
         f"🔑 Ваш VPN-ключ:\n<code>{vpn_data['subscription_url']}</code>\n\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "📲 <b>Как подключиться:</b>\n"
-        "1. Скачайте <b>Hiddify</b> (Android/iOS/Windows)\n"
-        "   или <b>v2rayNG</b> (Android) / <b>Streisand</b> (iOS)\n"
-        "2. Нажмите <b>+</b> → <b>Вставить из буфера</b>\n"
-        "3. Скопируйте ссылку выше и вставьте\n"
-        "4. Нажмите <b>Подключить</b> ✅",
+        "Импортируйте ключ в v2rayNG (Android) или Streisand (iOS).",
         parse_mode="HTML",
     )
     await callback.answer()
@@ -268,54 +258,6 @@ async def check_payment(callback: CallbackQuery, session: Session):
 # ── Trial period ──────────────────────────────────────────────────────────────
 
 @router.message(F.text == "🎁 Пробный период")
-async def trial_period(message: Message, session: Session):
-    user = get_user(message.from_user.id, session)
-    if not user:
-        await message.answer("Сначала отправьте /start")
-        return
-
-    # Check if trial already used
-    result = session.execute(
-        select(TrialUsage).where(TrialUsage.telegram_id == message.from_user.id)
-    )
-    if result.scalar_one_or_none():
-        await message.answer("😔 Вы уже использовали пробный период.")
-        return
-
-    username = f"trial_{message.from_user.id}"
-    try:
-        vpn_data = await vpn_service.create_user(username, settings.TRIAL_DAYS)
-    except Exception as e:
-        logger.error(f"Trial VPN create error: {e}")
-        await message.answer("⚠️ Ошибка создания пробного ключа. Обратитесь в поддержку.")
-        return
-
-    user.trial_used = True
-    trial = TrialUsage(telegram_id=message.from_user.id)
-    vpn_key = VPNKey(
-        user_id=user.id,
-        key_uuid=vpn_data["uuid"],
-        key_data=vpn_data["subscription_url"],
-        expiry_date=vpn_data["expiry_date"],
-    )
-    session.add(trial)
-    session.add(vpn_key)
-    session.commit()
-
-    await message.answer(
-        f"🎁 <b>Пробный период активирован!</b>\n\n"
-        f"🔑 Ваш VPN-ключ на {settings.TRIAL_DAYS} дня:\n"
-        f"<code>{vpn_data['subscription_url']}</code>\n\n"
-        f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "📲 <b>Как подключиться:</b>\n"
-        "1. Скачайте <b>Hiddify</b> (Android/iOS/Windows)\n"
-        "   или <b>v2rayNG</b> (Android) / <b>Streisand</b> (iOS)\n"
-        "2. Нажмите <b>+</b> → <b>Вставить из буфера</b>\n"
-        "3. Скопируйте ссылку выше и вставьте\n"
-        "4. Нажмите <b>Подключить</b> ✅",
-        parse_mode="HTML",
-    )
-
 async def trial_period(message: Message, session: AsyncSession):
     user = await get_user(message.from_user.id, session)
     if not user:
@@ -358,11 +300,6 @@ async def trial_period(message: Message, session: AsyncSession):
         f"🔑 Ваш VPN-ключ на {settings.TRIAL_DAYS} дня:\n"
         f"<code>{vpn_data['subscription_url']}</code>\n\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "📲 <b>Как подключиться:</b>\n"
-        "1. Скачайте <b>Hiddify</b> (Android/iOS/Windows)\n"
-        "   или <b>v2rayNG</b> (Android) / <b>Streisand</b> (iOS)\n"
-        "2. Нажмите <b>+</b> → <b>Вставить из буфера</b>\n"
-        "3. Скопируйте ссылку выше и вставьте\n"
-        "4. Нажмите <b>Подключить</b> ✅",
+        "Импортируйте ключ в v2rayNG (Android) или Streisand (iOS).",
         parse_mode="HTML",
     )
