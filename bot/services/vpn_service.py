@@ -272,21 +272,39 @@ class VPNService:
 
         server_ip = self._get_server_ip()
         
-        # Beautiful name for VPN apps with flag and description
-        display_name = "⚡ VLESS-Reality | Netherlands 🇳🇱"
-        
-        # Reality-optimized URL with proper parameters
+        # Generate dual configuration subscription
         from urllib.parse import quote
-        sub_url = (
+        import base64
+        
+        # Config 1: Direct VPN (via IP)
+        config1_name = "⚡ | 🇳🇱 Netherlands VPN"
+        config1_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
+            f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
+            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+            f"&flow=xtls-rprx-vision"
+            f"#{quote(config1_name)}"
+        )
+        
+        # Config 2: CDN Bypass (via Cloudflare domain)
+        config2_name = "⚡ | 🇳🇱 Netherlands Обход"
+        config2_url = (
+            f"vless://{client_uuid}@djanvpn.ru:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
             f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
-            f"#{quote(display_name)}"
+            f"#{quote(config2_name)}"
         )
+        
+        # Create subscription with both configs
+        subscription_content = f"{config1_url}\n{config2_url}"
+        subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
+        
+        # For backward compatibility, return first config as main URL
         return {
             "uuid": client_uuid,
-            "subscription_url": sub_url,
+            "subscription_url": config1_url,
+            "subscription_base64": subscription_base64,
             "expiry_date": datetime.fromtimestamp(expiry_ts / 1000),
         }
 
@@ -387,22 +405,39 @@ class VPNService:
             
             logger.info(f"Client {username} created via API (inbound {inbound_id}, UUID {client_uuid})")
             
-            # Generate subscription URL
+            # Generate dual configuration subscription
             server_ip = self._get_server_ip()
-            display_name = "⚡ VLESS-Reality | Netherlands 🇳🇱"
-            
             from urllib.parse import quote
-            sub_url = (
+            import base64
+            
+            # Config 1: Direct VPN (via IP)
+            config1_name = "⚡ | 🇳🇱 Netherlands VPN"
+            config1_url = (
                 f"vless://{client_uuid}@{server_ip}:{port}"
+                f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
+                f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+                f"&flow=xtls-rprx-vision"
+                f"#{quote(config1_name)}"
+            )
+            
+            # Config 2: CDN Bypass (via Cloudflare domain)
+            config2_name = "⚡ | 🇳🇱 Netherlands Обход"
+            config2_url = (
+                f"vless://{client_uuid}@djanvpn.ru:{port}"
                 f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
                 f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
                 f"&flow=xtls-rprx-vision"
-                f"#{quote(display_name)}"
+                f"#{quote(config2_name)}"
             )
+            
+            # Create subscription with both configs
+            subscription_content = f"{config1_url}\n{config2_url}"
+            subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
             
             return {
                 "uuid": client_uuid,
-                "subscription_url": sub_url,
+                "subscription_url": config1_url,
+                "subscription_base64": subscription_base64,
                 "expiry_date": datetime.fromtimestamp(expiry_ts / 1000),
             }
             
