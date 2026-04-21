@@ -1,0 +1,123 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - CDN Bypass Connection Validation Failure
+  - **CRITICAL**: This test MUST FAIL on unfixed config - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the configuration when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate CDN bypass connections fail with current serverNames configuration
+  - **Manual Testing Approach**: Since this is a configuration-level bug with VPN protocol validation, manual testing with real VPN client is most appropriate
+  - Test CDN bypass connection attempt with sni=djanvpn.ru on UNFIXED config_reality.json
+  - Import subscription URL and attempt to connect to "⚡ | 🇳🇱 Netherlands Обход" server
+  - Verify connection fails with N/A ping status or connection timeout
+  - Test manual vless:// URL creation with server IP but sni=djanvpn.ru
+  - Verify Reality validation rejects the connection (not in serverNames whitelist)
+  - Run test on UNFIXED configuration
+  - **EXPECTED OUTCOME**: Connection FAILS with N/A ping or timeout (this is correct - it proves the bug exists)
+  - Document counterexamples found: CDN bypass shows N/A, only Direct VPN works, subscription shows 1 working server instead of 2
+  - Mark task complete when test is performed, failure is confirmed, and counterexamples are documented
+  - _Requirements: 1.1, 1.2, 1.3_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Direct VPN Connection Behavior
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED config_reality.json for Direct VPN connections
+  - Test Direct VPN connection with sni=www.google.com on UNFIXED configuration
+  - Record baseline: connection time, ping status, traffic routing behavior
+  - Test Direct VPN connection with sni=google.com on UNFIXED configuration
+  - Verify both Google SNI values work correctly before fix
+  - Test client statistics tracking on UNFIXED configuration
+  - Verify traffic counters increment correctly for Direct VPN
+  - Run tests on UNFIXED configuration
+  - **EXPECTED OUTCOME**: All Direct VPN tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are performed and passing behavior is documented on unfixed config
+  - _Requirements: 3.1, 3.2, 3.3_
+
+- [-] 3. Fix for Reality serverNames configuration mismatch
+
+  - [x] 3.1 Backup current configuration
+    - Create backup of config_reality.json before making changes
+    - Run: `cp config_reality.json config_reality.json.backup`
+    - Verify backup file exists and contains valid JSON
+    - _Requirements: All (safety measure)_
+
+  - [x] 3.2 Update config_reality.json serverNames array
+    - Open config_reality.json in editor
+    - Locate line 48 within realitySettings object
+    - Modify serverNames array from `["www.google.com", "google.com"]` to `["www.google.com", "google.com", "djanvpn.ru"]`
+    - Validate JSON syntax: `python3 -m json.tool config_reality.json > /dev/null && echo "Valid JSON" || echo "Invalid JSON"`
+    - Verify no other Reality parameters were accidentally modified (privateKey, shortIds, dest, xver must remain unchanged)
+    - _Bug_Condition: isBugCondition(input) where input.sni == "djanvpn.ru" AND "djanvpn.ru" NOT IN realityConfig.serverNames_
+    - _Expected_Behavior: Reality SHALL successfully validate connections with sni=djanvpn.ru when "djanvpn.ru" is in serverNames array_
+    - _Preservation: Direct VPN connections using sni=www.google.com or sni=google.com SHALL continue to work exactly as before_
+    - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
+
+  - [x] 3.3 Restart xray process to apply configuration
+    - Identify xray process: `ps aux | grep xray-linux`
+    - Send SIGHUP signal to reload configuration: `kill -SIGHUP <xray_pid>`
+    - Alternative: Use systemctl if xray is a service: `systemctl reload xray` or `systemctl restart xray`
+    - Alternative: Use docker-compose if running in container: `docker-compose restart`
+    - Verify xray restarted successfully by checking logs
+    - Check for configuration errors in xray logs
+    - _Requirements: 2.1, 2.2, 2.3_
+
+  - [ ] 3.4 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - CDN Bypass Connection Validation Success
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Import subscription URL and attempt to connect to "⚡ | 🇳🇱 Netherlands Обход" server
+    - Verify connection succeeds with proper ping status (not N/A)
+    - Test manual vless:// URL with sni=djanvpn.ru
+    - Verify Reality validation accepts the connection
+    - Verify subscription shows 2 working servers instead of 1
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Connection SUCCEEDS with proper connectivity (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3_
+
+  - [ ] 3.5 Verify preservation tests still pass
+    - **Property 2: Preservation** - Direct VPN Connection Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Test Direct VPN connection with sni=www.google.com on FIXED configuration
+    - Compare connection time and ping status to baseline from task 2
+    - Verify identical behavior (no regressions)
+    - Test Direct VPN connection with sni=google.com on FIXED configuration
+    - Verify identical behavior to baseline
+    - Test client statistics tracking on FIXED configuration
+    - Verify traffic counters still increment correctly
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: All Direct VPN tests PASS with identical behavior (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions)
+    - _Requirements: 3.1, 3.2, 3.3_
+
+- [ ] 4. Test both Direct and CDN bypass connections end-to-end
+  - Import subscription URL in VPN client application
+  - Verify 2 servers appear in client: "⚡ | 🇳🇱 Netherlands VPN" and "⚡ | 🇳🇱 Netherlands Обход"
+  - Connect to Direct VPN server → verify connection succeeds with proper ping
+  - Browse websites through Direct VPN → verify traffic routing works
+  - Disconnect from Direct VPN
+  - Connect to CDN Bypass server → verify connection succeeds with proper ping
+  - Browse websites through CDN Bypass → verify traffic routing works through Cloudflare CDN
+  - Switch between servers multiple times → verify both remain stable
+  - Check client traffic statistics → verify counters increment for both configurations
+  - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
+
+- [x] 5. Clean up trial users and reset trial flag for testing
+  - Review existing trial users in config_reality.json clients array
+  - Identify trial users with email pattern "trial_1658346274_*"
+  - Run cleanup script if available: `python3 cleanup_and_reset_trial.py`
+  - Alternative: Manually remove trial client entries from config_reality.json
+  - Reset trial flag in database: Update users table to set has_used_trial=0 for test accounts
+  - Restart xray process after cleanup: `kill -SIGHUP <xray_pid>`
+  - Verify trial users are removed from configuration
+  - Test trial user creation flow to ensure cleanup was successful
+  - _Requirements: Testing infrastructure maintenance_
+
+- [ ] 6. Checkpoint - Ensure all tests pass
+  - Verify CDN bypass connections work (bug is fixed)
+  - Verify Direct VPN connections still work (no regressions)
+  - Verify both servers appear in subscription import
+  - Verify traffic routing works for both configurations
+  - Verify client statistics tracking works correctly
+  - Ensure all tests pass, ask the user if questions arise
+  - _Requirements: All_

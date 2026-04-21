@@ -270,41 +270,22 @@ class VPNService:
 
         _restart_xray()
 
-        server_ip = self._get_server_ip()
-        
-        # Generate dual configuration subscription
+        # Generate single CDN bypass configuration with RKN circumvention
         from urllib.parse import quote
-        import base64
         
-        # Config 1: Direct VPN (via IP)
-        config1_name = "⚡ | 🇳🇱 Netherlands VPN"
-        config1_url = (
-            f"vless://{client_uuid}@{server_ip}:{port}"
-            f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
-            f"&flow=xtls-rprx-vision"
-            f"#{quote(config1_name)}"
-        )
-        
-        # Config 2: CDN Bypass (via Cloudflare domain)
-        config2_name = "⚡ | 🇳🇱 Netherlands Обход"
-        config2_url = (
+        # Single config: CDN Bypass via Cloudflare (djanvpn.ru) with RKN circumvention
+        config_name = "⚡ | 🇳🇱 Netherlands VPN"
+        subscription_url = (
             f"vless://{client_uuid}@djanvpn.ru:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
             f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
-            f"#{quote(config2_name)}"
+            f"#{quote(config_name)}"
         )
         
-        # Create subscription with both configs
-        subscription_content = f"{config1_url}\n{config2_url}"
-        subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
-        
-        # For backward compatibility, return first config as main URL
         return {
             "uuid": client_uuid,
-            "subscription_url": config1_url,
-            "subscription_base64": subscription_base64,
+            "subscription_url": subscription_url,
             "expiry_date": datetime.fromtimestamp(expiry_ts / 1000),
         }
 
@@ -405,39 +386,23 @@ class VPNService:
             
             logger.info(f"Client {username} created via API (inbound {inbound_id}, UUID {client_uuid})")
             
-            # Generate dual configuration subscription
+            # Generate single CDN bypass configuration with RKN circumvention
             server_ip = self._get_server_ip()
             from urllib.parse import quote
-            import base64
             
-            # Config 1: Direct VPN (via IP)
-            config1_name = "⚡ | 🇳🇱 Netherlands VPN"
-            config1_url = (
-                f"vless://{client_uuid}@{server_ip}:{port}"
-                f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-                f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
-                f"&flow=xtls-rprx-vision"
-                f"#{quote(config1_name)}"
-            )
-            
-            # Config 2: CDN Bypass (via Cloudflare domain)
-            config2_name = "⚡ | 🇳🇱 Netherlands Обход"
-            config2_url = (
+            # Single config: CDN Bypass via Cloudflare (djanvpn.ru) with RKN circumvention
+            config_name = "⚡ | 🇳🇱 Netherlands VPN"
+            subscription_url = (
                 f"vless://{client_uuid}@djanvpn.ru:{port}"
                 f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
                 f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
                 f"&flow=xtls-rprx-vision"
-                f"#{quote(config2_name)}"
+                f"#{quote(config_name)}"
             )
-            
-            # Create subscription with both configs
-            subscription_content = f"{config1_url}\n{config2_url}"
-            subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
             
             return {
                 "uuid": client_uuid,
-                "subscription_url": config1_url,
-                "subscription_base64": subscription_base64,
+                "subscription_url": subscription_url,
                 "expiry_date": datetime.fromtimestamp(expiry_ts / 1000),
             }
             

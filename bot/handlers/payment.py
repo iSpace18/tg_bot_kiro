@@ -136,8 +136,8 @@ async def successful_payment(message: Message, session: AsyncSession):
     )
     session.add(payment)
 
-    # Save subscription_base64 if available, otherwise use subscription_url
-    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    # Save subscription_url directly (single CDN bypass configuration)
+    key_data = vpn_data["subscription_url"]
     
     vpn_key = VPNKey(
         user_id=user.id,
@@ -153,9 +153,7 @@ async def successful_payment(message: Message, session: AsyncSession):
         f"✅ VPN-ключ создан\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
         f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
-        f"💡 Вы получите 2 сервера:\n"
-        f"• <b>Netherlands VPN</b> - прямое подключение\n"
-        f"• <b>Netherlands Обход</b> - обход блокировок",
+        f"💡 Сервер с обходом блокировок РКН через Cloudflare CDN",
         parse_mode="HTML",
     )
 
@@ -243,8 +241,8 @@ async def check_payment(callback: CallbackQuery, session: AsyncSession):
 
     payment.status = "paid"
     
-    # Save subscription_base64 if available, otherwise use subscription_url
-    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    # Save subscription_url directly (single CDN bypass configuration)
+    key_data = vpn_data["subscription_url"]
     
     vpn_key = VPNKey(
         user_id=user.id,
@@ -260,9 +258,7 @@ async def check_payment(callback: CallbackQuery, session: AsyncSession):
         f"✅ VPN-ключ создан\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
         f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
-        f"💡 Вы получите 2 сервера:\n"
-        f"• <b>Netherlands VPN</b> - прямое подключение\n"
-        f"• <b>Netherlands Обход</b> - обход блокировок",
+        f"💡 Сервер с обходом блокировок РКН через Cloudflare CDN",
         parse_mode="HTML",
     )
     await callback.answer()
@@ -299,8 +295,8 @@ async def trial_period(message: Message, session: AsyncSession):
     user.trial_used = True
     trial = TrialUsage(telegram_id=message.from_user.id)
     
-    # Save subscription_base64 if available, otherwise use subscription_url
-    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    # Save subscription_url directly (single CDN bypass configuration)
+    key_data = vpn_data["subscription_url"]
     
     vpn_key = VPNKey(
         user_id=user.id,
@@ -317,8 +313,6 @@ async def trial_period(message: Message, session: AsyncSession):
         f"✅ VPN-ключ создан на {settings.TRIAL_DAYS} дня\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
         f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
-        f"💡 Вы получите 2 сервера:\n"
-        f"• <b>Netherlands VPN</b> - прямое подключение\n"
-        f"• <b>Netherlands Обход</b> - обход блокировок",
+        f"💡 Сервер с обходом блокировок РКН через Cloudflare CDN",
         parse_mode="HTML",
     )

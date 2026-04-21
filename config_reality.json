@@ -1,0 +1,207 @@
+{
+  "log": {
+    "access": "none",
+    "dnsLog": false,
+    "error": "",
+    "loglevel": "warning",
+    "maskAddress": ""
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["api"],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "ip": ["geoip:private"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": ["bittorrent"]
+      }
+    ]
+  },
+  "dns": null,
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "streamSettings": null,
+      "tag": "api",
+      "sniffing": null
+    },
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "email": "trial_1658346274_60cfec",
+            "flow": "xtls-rprx-vision",
+            "id": "89cec46a-fed7-45b1-af60-baadae3d4d52"
+          },
+          {
+            "email": "trial_1658346274_12c412",
+            "flow": "xtls-rprx-vision",
+            "id": "a11e1f3f-51ba-4d68-bc28-3b5dcee09654"
+          },
+          {
+            "email": "trial_1658346274_4bc472",
+            "flow": "xtls-rprx-vision",
+            "id": "0a85125b-868e-46f2-ac0d-6cdac43d49a3"
+          },
+          {
+            "email": "trial_1658346274_06e15d",
+            "flow": "xtls-rprx-vision",
+            "id": "525e5b27-942f-42a0-a8b7-ff1547374b75"
+          },
+          {
+            "email": "trial_1658346274_ffd3fe",
+            "flow": "xtls-rprx-vision",
+            "id": "082bf6ee-1f33-4981-91cf-08afc65f2227"
+          },
+          {
+            "email": "trial_1658346274_0e70a5",
+            "flow": "xtls-rprx-vision",
+            "id": "3b036201-0b6b-4914-880e-789d07505367"
+          },
+          {
+            "email": "trial_1658346274_74efc1",
+            "flow": "xtls-rprx-vision",
+            "id": "6f3d1c5a-4812-44a3-8936-741736963d19"
+          },
+          {
+            "email": "trial_1658346274_925c07",
+            "flow": "xtls-rprx-vision",
+            "id": "a6970595-61c4-44f4-a50c-4e2319947c6d"
+          },
+          {
+            "email": "trial_1658346274_aafc25",
+            "flow": "xtls-rprx-vision",
+            "id": "ef4b011a-bd0b-4935-9595-281fa106ac69"
+          },
+          {
+            "email": "trial_1658346274_962164",
+            "flow": "xtls-rprx-vision",
+            "id": "28301314-3590-4b81-8b0f-26fbb613fbf9"
+          },
+          {
+            "email": "trial_1658346274_f0e406",
+            "flow": "xtls-rprx-vision",
+            "id": "6e076ee8-07dd-413b-998f-c3faa1b6f9ff"
+          },
+          {
+            "email": "trial_1658346274_f72464",
+            "flow": "xtls-rprx-vision",
+            "id": "1f9c4ef2-8b39-4e52-8bcf-40d4d9b74893"
+          },
+          {
+            "email": "trial_1658346274",
+            "flow": "xtls-rprx-vision",
+            "id": "e4f145bd-e072-43b9-b8b8-7a66d1a1cf91"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "www.google.com:443",
+          "xver": 0,
+          "serverNames": ["www.google.com", "google.com"],
+          "privateKey": "MPnNzbMLF812adXAeJXYv3nY3M6gDWZJsc2kIlLAZnE",
+          "shortIds": ["", "0123456789abcdef"]
+        },
+        "tcpSettings": {
+          "acceptProxyProtocol": false,
+          "header": {
+            "type": "none"
+          }
+        },
+        "sockopt": {
+          "mark": 255,
+          "tcpCongestion": "bbr",
+          "tcpFastOpen": true,
+          "tcpKeepAliveIdle": 100,
+          "tcpKeepAliveInterval": 10,
+          "tcpNoDelay": true,
+          "tcpMptcp": false
+        }
+      },
+      "tag": "inbound-8443",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic", "fakedns"],
+        "metadataOnly": false,
+        "routeOnly": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4",
+        "redirect": "",
+        "noises": []
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpFastOpen": true,
+          "tcpNoDelay": true
+        }
+      }
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole",
+      "settings": {}
+    }
+  ],
+  "transport": null,
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true,
+        "handshake": 4,
+        "connIdle": 300,
+        "uplinkOnly": 0,
+        "downlinkOnly": 0,
+        "bufferSize": 512
+      }
+    },
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true,
+      "statsOutboundDownlink": false,
+      "statsOutboundUplink": false
+    }
+  },
+  "api": {
+    "tag": "api",
+    "services": ["HandlerService", "LoggerService", "StatsService"]
+  },
+  "stats": {},
+  "reverse": null,
+  "fakedns": null,
+  "observatory": null,
+  "burstObservatory": null,
+  "metrics": {
+    "tag": "metrics_out",
+    "listen": "127.0.0.1:11111"
+  }
+}

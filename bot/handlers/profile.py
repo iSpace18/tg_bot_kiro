@@ -101,8 +101,6 @@ async def my_keys(callback: CallbackQuery, session: AsyncSession):
 @router.callback_query(F.data.startswith("key_info:"))
 async def key_info(callback: CallbackQuery, session: AsyncSession):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    from urllib.parse import quote
-    import base64
     
     key_id = int(callback.data.split(":")[1])
     result = await session.execute(select(VPNKey).where(VPNKey.id == key_id))
@@ -111,52 +109,13 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Ключ не найден", show_alert=True)
         return
 
-    # Check if key_data is base64 subscription or single URL
-    key_data = key.key_data
-    
-    if key_data.startswith("vless://"):
-        # Old format - single URL, need to generate dual config
-        uuid_part = key_data.split("vless://")[1].split("@")[0]
-        server_parts = key_data.split("@")[1].split(":")
-        server_ip = server_parts[0]
-        port = server_parts[1].split("?")[0] if len(server_parts) > 1 else "443"
-        
-        # Generate dual configuration
-        config1_name = "⚡ | 🇳🇱 Netherlands VPN"
-        config1_url = (
-            f"vless://{uuid_part}@{server_ip}:{port}"
-            f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
-            f"&flow=xtls-rprx-vision"
-            f"#{quote(config1_name)}"
-        )
-        
-        config2_name = "⚡ | 🇳🇱 Netherlands Обход"
-        config2_url = (
-            f"vless://{uuid_part}@djanvpn.ru:{port}"
-            f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-            f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
-            f"&flow=xtls-rprx-vision"
-            f"#{quote(config2_name)}"
-        )
-    else:
-        # New format - decode base64 subscription
-        try:
-            decoded = base64.b64decode(key_data).decode()
-            urls = decoded.strip().split('\n')
-            config1_url = urls[0] if len(urls) > 0 else ""
-            config2_url = urls[1] if len(urls) > 1 else ""
-        except:
-            config1_url = ""
-            config2_url = ""
+    # Use subscription URL directly (single CDN bypass configuration)
+    subscription_url = key.key_data
 
-    # Keyboard with connection buttons for both servers
+    # Keyboard with single connection button
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🔗 Netherlands VPN", url=config1_url),
-        ],
-        [
-            InlineKeyboardButton(text="🔗 Netherlands Обход", url=config2_url),
+            InlineKeyboardButton(text="🔗 Подключить", url=subscription_url),
         ],
         [
             InlineKeyboardButton(text="📖 Инструкция", callback_data=f"show_guide:{key_id}"),
@@ -168,18 +127,13 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
 
     await callback.message.edit_text(
         f"🔑 <b>VPN-ключ</b>\n\n"
-        f"<b>Доступные серверы:</b>\n\n"
-        f"1️⃣ <b>Netherlands VPN</b>\n"
-        f"   • Прямое подключение через IP\n"
-        f"   • Максимальная скорость\n"
-        f"   • Для обычного использования\n\n"
-        f"2️⃣ <b>Netherlands Обход</b>\n"
+        f"🌐 <b>Netherlands VPN</b>\n"
         f"   • Подключение через Cloudflare CDN\n"
         f"   • Обход блокировок РКН\n"
-        f"   • Для использования во время блокировок\n\n"
+        f"   • Высокая скорость и стабильность\n\n"
         f"📅 Действует до: {key.expiry_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"✅ Статус: {'Активен' if key.is_active else 'Неактивен'}\n\n"
-        f"💡 Нажмите на нужный сервер для подключения\n"
+        f"💡 Нажмите \"Подключить\" для добавления сервера\n"
         f"📖 Или нажмите \"Инструкция\" для пошагового руководства",
         reply_markup=keyboard,
         parse_mode="HTML",
