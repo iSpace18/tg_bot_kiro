@@ -280,7 +280,7 @@ class VPNService:
         sub_url = (
             f"vless://{client_uuid}@{server_ip}:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+            f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
             f"#{quote(display_name)}"
         )
@@ -395,7 +395,7 @@ class VPNService:
             sub_url = (
                 f"vless://{client_uuid}@{server_ip}:{port}"
                 f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-                f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+                f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
                 f"&flow=xtls-rprx-vision"
                 f"#{quote(display_name)}"
             )
