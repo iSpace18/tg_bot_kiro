@@ -111,17 +111,20 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Ключ не найден", show_alert=True)
         return
 
-    # Parse UUID from key_data
+    # Check if key_data is base64 subscription or single URL
     key_data = key.key_data
-    if "vless://" in key_data:
+    
+    if key_data.startswith("vless://"):
+        # Old format - single URL, need to generate dual config
         uuid_part = key_data.split("vless://")[1].split("@")[0]
-        server_ip_part = key_data.split("@")[1].split(":")[0]
-        port_part = key_data.split(":")[2].split("?")[0] if ":" in key_data.split("@")[1] else "443"
+        server_parts = key_data.split("@")[1].split(":")
+        server_ip = server_parts[0]
+        port = server_parts[1].split("?")[0] if len(server_parts) > 1 else "443"
         
         # Generate dual configuration
         config1_name = "⚡ | 🇳🇱 Netherlands VPN"
         config1_url = (
-            f"vless://{uuid_part}@{server_ip_part}:{port_part}"
+            f"vless://{uuid_part}@{server_ip}:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
             f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
@@ -130,7 +133,7 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         
         config2_name = "⚡ | 🇳🇱 Netherlands Обход"
         config2_url = (
-            f"vless://{uuid_part}@djanvpn.ru:{port_part}"
+            f"vless://{uuid_part}@djanvpn.ru:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
             f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
@@ -140,11 +143,12 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         # Create subscription with both configs
         subscription_content = f"{config1_url}\n{config2_url}"
         subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
-        
-        # Create data URL for subscription
-        subscription_url = f"data:text/plain;base64,{subscription_base64}"
     else:
-        subscription_url = key_data
+        # New format - already base64 subscription
+        subscription_base64 = key_data
+    
+    # Create subscription URL that apps can import
+    subscription_url = f"sub://{subscription_base64}"
 
     # Keyboard with connection buttons
     keyboard = InlineKeyboardMarkup(inline_keyboard=[

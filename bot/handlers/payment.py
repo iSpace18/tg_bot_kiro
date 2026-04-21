@@ -136,10 +136,13 @@ async def successful_payment(message: Message, session: AsyncSession):
     )
     session.add(payment)
 
+    # Save subscription_base64 if available, otherwise use subscription_url
+    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    
     vpn_key = VPNKey(
         user_id=user.id,
         key_uuid=vpn_data["uuid"],
-        key_data=vpn_data["subscription_url"],
+        key_data=key_data,
         expiry_date=vpn_data["expiry_date"],
     )
     session.add(vpn_key)
@@ -147,9 +150,12 @@ async def successful_payment(message: Message, session: AsyncSession):
 
     await message.answer(
         f"✅ <b>Оплата прошла успешно!</b>\n\n"
-        f"🔑 Ваш VPN-ключ:\n<code>{vpn_data['subscription_url']}</code>\n\n"
+        f"✅ VPN-ключ создан\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "Импортируйте ключ в приложение v2rayNG (Android) или Streisand (iOS).",
+        f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
+        f"💡 Вы получите 2 сервера:\n"
+        f"• <b>Netherlands VPN</b> - прямое подключение\n"
+        f"• <b>Netherlands Обход</b> - обход блокировок",
         parse_mode="HTML",
     )
 
@@ -236,10 +242,14 @@ async def check_payment(callback: CallbackQuery, session: AsyncSession):
         return
 
     payment.status = "paid"
+    
+    # Save subscription_base64 if available, otherwise use subscription_url
+    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    
     vpn_key = VPNKey(
         user_id=user.id,
         key_uuid=vpn_data["uuid"],
-        key_data=vpn_data["subscription_url"],
+        key_data=key_data,
         expiry_date=vpn_data["expiry_date"],
     )
     session.add(vpn_key)
@@ -247,9 +257,12 @@ async def check_payment(callback: CallbackQuery, session: AsyncSession):
 
     await callback.message.edit_text(
         f"✅ <b>Оплата подтверждена!</b>\n\n"
-        f"🔑 Ваш VPN-ключ:\n<code>{vpn_data['subscription_url']}</code>\n\n"
+        f"✅ VPN-ключ создан\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "Импортируйте ключ в v2rayNG (Android) или Streisand (iOS).",
+        f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
+        f"💡 Вы получите 2 сервера:\n"
+        f"• <b>Netherlands VPN</b> - прямое подключение\n"
+        f"• <b>Netherlands Обход</b> - обход блокировок",
         parse_mode="HTML",
     )
     await callback.answer()
@@ -285,10 +298,14 @@ async def trial_period(message: Message, session: AsyncSession):
 
     user.trial_used = True
     trial = TrialUsage(telegram_id=message.from_user.id)
+    
+    # Save subscription_base64 if available, otherwise use subscription_url
+    key_data = vpn_data.get("subscription_base64", vpn_data["subscription_url"])
+    
     vpn_key = VPNKey(
         user_id=user.id,
         key_uuid=vpn_data["uuid"],
-        key_data=vpn_data["subscription_url"],
+        key_data=key_data,
         expiry_date=vpn_data["expiry_date"],
     )
     session.add(trial)
@@ -297,9 +314,11 @@ async def trial_period(message: Message, session: AsyncSession):
 
     await message.answer(
         f"🎁 <b>Пробный период активирован!</b>\n\n"
-        f"🔑 Ваш VPN-ключ на {settings.TRIAL_DAYS} дня:\n"
-        f"<code>{vpn_data['subscription_url']}</code>\n\n"
+        f"✅ VPN-ключ создан на {settings.TRIAL_DAYS} дня\n"
         f"📅 Действует до: {vpn_data['expiry_date'].strftime('%d.%m.%Y')}\n\n"
-        "Импортируйте ключ в v2rayNG (Android) или Streisand (iOS).",
+        f"🔑 Перейдите в <b>Профиль → Мои ключи</b> для подключения\n\n"
+        f"💡 Вы получите 2 сервера:\n"
+        f"• <b>Netherlands VPN</b> - прямое подключение\n"
+        f"• <b>Netherlands Обход</b> - обход блокировок",
         parse_mode="HTML",
     )
