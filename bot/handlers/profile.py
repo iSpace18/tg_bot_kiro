@@ -139,21 +139,24 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
             f"&flow=xtls-rprx-vision"
             f"#{quote(config2_name)}"
         )
-        
-        # Create subscription with both configs
-        subscription_content = f"{config1_url}\n{config2_url}"
-        subscription_base64 = base64.b64encode(subscription_content.encode()).decode()
     else:
-        # New format - already base64 subscription
-        subscription_base64 = key_data
-    
-    # Create subscription URL that apps can import
-    subscription_url = f"sub://{subscription_base64}"
+        # New format - decode base64 subscription
+        try:
+            decoded = base64.b64decode(key_data).decode()
+            urls = decoded.strip().split('\n')
+            config1_url = urls[0] if len(urls) > 0 else ""
+            config2_url = urls[1] if len(urls) > 1 else ""
+        except:
+            config1_url = ""
+            config2_url = ""
 
-    # Keyboard with connection buttons
+    # Keyboard with connection buttons for both servers
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🔗 Подключить (2 сервера)", url=subscription_url),
+            InlineKeyboardButton(text="🔗 Netherlands VPN", url=config1_url),
+        ],
+        [
+            InlineKeyboardButton(text="🔗 Netherlands Обход", url=config2_url),
         ],
         [
             InlineKeyboardButton(text="📖 Инструкция", callback_data=f"show_guide:{key_id}"),
@@ -165,14 +168,18 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
 
     await callback.message.edit_text(
         f"🔑 <b>VPN-ключ</b>\n\n"
-        f"<b>Конфигурации:</b>\n"
-        f"1️⃣ ⚡ | 🇳🇱 Netherlands VPN (прямое подключение)\n"
-        f"2️⃣ ⚡ | 🇳🇱 Netherlands Обход (через CDN)\n\n"
+        f"<b>Доступные серверы:</b>\n\n"
+        f"1️⃣ <b>Netherlands VPN</b>\n"
+        f"   • Прямое подключение через IP\n"
+        f"   • Максимальная скорость\n"
+        f"   • Для обычного использования\n\n"
+        f"2️⃣ <b>Netherlands Обход</b>\n"
+        f"   • Подключение через Cloudflare CDN\n"
+        f"   • Обход блокировок РКН\n"
+        f"   • Для использования во время блокировок\n\n"
         f"📅 Действует до: {key.expiry_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"✅ Статус: {'Активен' if key.is_active else 'Неактивен'}\n\n"
-        f"💡 Нажмите \"Подключить\" - в приложении появятся 2 сервера:\n"
-        f"• <b>Netherlands VPN</b> - для обычного использования\n"
-        f"• <b>Netherlands Обход</b> - для обхода блокировок РКН\n\n"
+        f"💡 Нажмите на нужный сервер для подключения\n"
         f"📖 Или нажмите \"Инструкция\" для пошагового руководства",
         reply_markup=keyboard,
         parse_mode="HTML",
