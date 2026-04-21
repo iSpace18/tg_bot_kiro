@@ -100,6 +100,8 @@ async def my_keys(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data.startswith("key_info:"))
 async def key_info(callback: CallbackQuery, session: AsyncSession):
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
     key_id = int(callback.data.split(":")[1])
     result = await session.execute(select(VPNKey).where(VPNKey.id == key_id))
     key = result.scalar_one_or_none()
@@ -107,11 +109,27 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Ключ не найден", show_alert=True)
         return
 
+    # Keyboard with connection buttons
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔗 Подключить", url=key.key_data),
+        ],
+        [
+            InlineKeyboardButton(text="📖 Инструкция", callback_data=f"show_guide:{key_id}"),
+        ],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="my_keys"),
+        ],
+    ])
+
     await callback.message.edit_text(
         f"🔑 <b>VPN-ключ</b>\n\n"
         f"<code>{key.key_data}</code>\n\n"
         f"📅 Действует до: {key.expiry_date.strftime('%d.%m.%Y %H:%M')}\n"
-        f"✅ Статус: {'Активен' if key.is_active else 'Неактивен'}",
+        f"✅ Статус: {'Активен' if key.is_active else 'Неактивен'}\n\n"
+        f"💡 Нажмите \"Подключить\" для автоматического открытия в приложении\n"
+        f"или \"Инструкция\" для пошагового руководства",
+        reply_markup=keyboard,
         parse_mode="HTML",
     )
     await callback.answer()

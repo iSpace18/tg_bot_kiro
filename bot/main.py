@@ -7,7 +7,7 @@ from bot.config import settings
 from bot.utils.db import init_db
 from bot.utils.logger import setup_logger
 from bot.middlewares.database import DatabaseMiddleware
-from bot.handlers import start, payment, profile, referral, support, admin, faq
+from bot.handlers import start, payment, profile, referral, support, admin, faq, connection_guide
 
 setup_logger()
 logger = logging.getLogger(__name__)
@@ -62,6 +62,7 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(payment.router)
     dp.include_router(profile.router)
+    dp.include_router(connection_guide.router)
     dp.include_router(referral.router)
     dp.include_router(support.router)
     dp.include_router(admin.router)
