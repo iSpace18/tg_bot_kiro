@@ -68,7 +68,13 @@ async def main():
     dp.include_router(faq.router)
 
     logger.info("Bot starting...")
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    try:
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    finally:
+        # Cleanup VPN service session on shutdown
+        from bot.services.vpn_service import vpn_service
+        await vpn_service.close()
+        logger.info("Bot shutdown complete")
 
 
 if __name__ == "__main__":
