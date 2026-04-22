@@ -112,11 +112,8 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
     # Use subscription URL directly (single CDN bypass configuration)
     subscription_url = key.key_data
 
-    # Keyboard with single connection button
+    # Keyboard without URL button (Telegram doesn't support vless:// protocol)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🔗 Подключить", url=subscription_url),
-        ],
         [
             InlineKeyboardButton(text="📖 Инструкция", callback_data=f"show_guide:{key_id}"),
         ],
@@ -133,8 +130,15 @@ async def key_info(callback: CallbackQuery, session: AsyncSession):
         f"   • Высокая скорость и стабильность\n\n"
         f"📅 Действует до: {key.expiry_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"✅ Статус: {'Активен' if key.is_active else 'Неактивен'}\n\n"
-        f"💡 Нажмите \"Подключить\" для добавления сервера\n"
-        f"📖 Или нажмите \"Инструкция\" для пошагового руководства",
+        f"🔗 <b>Ключ подключения:</b>\n"
+        f"<code>{subscription_url}</code>\n\n"
+        f"💡 <b>Как подключить:</b>\n"
+        f"1. Скопируйте ключ выше (нажмите на него)\n"
+        f"2. Откройте приложение Hiddify/V2Ray\n"
+        f"3. Нажмите + или \"Добавить конфигурацию\"\n"
+        f"4. Вставьте скопированный ключ\n"
+        f"5. Подключитесь к серверу\n\n"
+        f"📖 Подробная инструкция - нажмите кнопку ниже",
         reply_markup=keyboard,
         parse_mode="HTML",
     )
