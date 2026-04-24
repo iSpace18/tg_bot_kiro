@@ -270,15 +270,15 @@ class VPNService:
 
         _restart_xray()
 
-        # Generate single configuration - Direct connection (works during RKN blocks via Reality)
+        # Generate CDN bypass configuration (works during RKN blocks via Cloudflare)
         from urllib.parse import quote
         
-        # Direct connection via IP with Google SNI (Reality masking)
+        # CDN bypass connection via djanvpn.ru domain with matching SNI
         config_name = "Netherlands VPN"
         subscription_url = (
-            f"vless://{client_uuid}@{server_ip}:{port}"
+            f"vless://{client_uuid}@djanvpn.ru:{port}"
             f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-            f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+            f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
             f"&flow=xtls-rprx-vision"
             f"#{quote(config_name)}"
         )
@@ -386,16 +386,15 @@ class VPNService:
             
             logger.info(f"Client {username} created via API (inbound {inbound_id}, UUID {client_uuid})")
             
-            # Generate single configuration - Direct connection (works during RKN blocks via Reality)
-            server_ip = self._get_server_ip()
+            # Generate CDN bypass configuration (works during RKN blocks via Cloudflare)
             from urllib.parse import quote
             
-            # Direct connection via IP with Google SNI (Reality masking)
+            # CDN bypass connection via djanvpn.ru domain with matching SNI
             config_name = "Netherlands VPN"
             subscription_url = (
-                f"vless://{client_uuid}@{server_ip}:{port}"
+                f"vless://{client_uuid}@djanvpn.ru:{port}"
                 f"?type=tcp&security=reality&pbk=c4d33NKVpulPMhdJOcq-e12fjJjRZMU5V_wTTIm5K2c"
-                f"&fp=chrome&sni=www.google.com&sid=0123456789abcdef&spx=%2F"
+                f"&fp=chrome&sni=djanvpn.ru&sid=0123456789abcdef&spx=%2F"
                 f"&flow=xtls-rprx-vision"
                 f"#{quote(config_name)}"
             )
